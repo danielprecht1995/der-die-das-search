@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: der-die-das-ai-proxy
+    runtime: node
+    plan: starter
+    rootDir: .
+    buildCommand: npm install
+    startCommand: node server/ai-proxy.js
+    healthCheckPath: /health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5-nano

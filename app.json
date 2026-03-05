@@ -1,17 +1,22 @@
 {
   "expo": {
-    "name": "Der_die_das_search",
+    "name": "Der Die Das",
     "slug": "Der_die_das_search",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0F172A"
     },
     "ios": {
+      "bundleIdentifier": "com.danielprecht.derdiadassearch",
+      "buildNumber": "1",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "supportsTablet": true
     },
     "android": {
@@ -25,6 +30,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "240968fc-b910-45fc-a92b-fc8d9273c425"
+      }
+    },
+    "owner": "lingcademy"
   }
 }
