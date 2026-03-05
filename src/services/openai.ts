@@ -1,5 +1,5 @@
 import type { GermanNoun } from '../types';
-import { AI_PROXY_BASE_URL } from '../config';
+import { AI_PROXY_BASE_URL, AI_PROXY_TOKEN } from '../config';
 
 function ensureProxyConfigured() {
   const base = AI_PROXY_BASE_URL?.trim();
@@ -11,9 +11,11 @@ function ensureProxyConfigured() {
 
 async function postJson<T>(path: string, payload: unknown): Promise<T> {
   const base = ensureProxyConfigured();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (AI_PROXY_TOKEN?.trim()) headers['x-ai-proxy-token'] = AI_PROXY_TOKEN.trim();
   const response = await fetch(`${base}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload),
   });
 

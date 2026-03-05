@@ -3,8 +3,13 @@ const { URL } = require('url');
 
 const PORT = Number(process.env.PORT || 8787);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+const AI_PROXY_TOKEN = process.env.AI_PROXY_TOKEN || '';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5-nano';
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
+const OPENAI_TIMEOUT_MS = Number(process.env.OPENAI_TIMEOUT_MS || 25000);
+const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60000);
+const RATE_LIMIT_MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 60);
+const rateLimitMap = new Map();
 
 const SYSTEM_PROMPT = `You are a German grammar expert. When given a German noun, respond ONLY with a JSON object in this exact format (no markdown, no explanation):
 {"noun":"<noun with correct capitalisation>","article":"<der|die|das>","plural":"<plural form>","english":"<short English translation>","example":"<one short example sentence in German using this noun with its article>","exampleEn":"<English translation of the example sentence>"}
@@ -19,10 +24,34 @@ function sendJson(res, status, payload) {
   res.writeHead(status, {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-ai-proxy-token',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   });
   res.end(body);
+}
+
+function getClientIp(req) {
+  const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  if (forwarded) return forwarded;
+  return req.socket?.remoteAddress || 'unknown';
+}
+
+function isRateLimited(key) {
+  const now = Date.now();
+  const current = rateLimitMap.get(key);
+  if (!current || now - current.start >= RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(key, { count: 1, start: now });
+    return false;
+  }
+  if (current.count >= RATE_LIMIT_MAX_REQUESTS) return true;
+  current.count += 1;
+  return false;
+}
+
+function isAuthorized(req) {
+  if (!AI_PROXY_TOKEN) return true;
+  const incoming = String(req.headers['x-ai-proxy-token'] || '').trim();
+  return incoming && incoming === AI_PROXY_TOKEN;
 }
 
 function parseBody(req) {
@@ -87,17 +116,30 @@ async function callOpenAI(messages) {
     throw new Error('Server is missing OPENAI_API_KEY.');
   }
 
-  const response = await fetch(OPENAI_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
-      messages,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
+  let response;
+  try {
+    response = await fetch(OPENAI_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        messages,
+      }),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error && error.name === 'AbortError') {
+      throw new Error('OpenAI request timed out.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -133,6 +175,16 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
+    if (!isAuthorized(req)) {
+      sendJson(res, 401, { error: 'Unauthorized.' });
+      return;
+    }
+    const ip = getClientIp(req);
+    if (isRateLimited(ip)) {
+      sendJson(res, 429, { error: 'Too many requests. Please try again shortly.' });
+      return;
+    }
+
     const body = await parseBody(req);
 
     if (url.pathname === '/api/lookup-noun') {

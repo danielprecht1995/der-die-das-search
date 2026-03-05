@@ -123,7 +123,7 @@ export default function SearchScreen() {
   }, [submittedQuery, aiLoading, canUseAiLookup, consumeAiLookup, addCustomNoun]);
 
   const handleLookupMore = useCallback(async () => {
-    const q = query.trim();
+    const q = submittedQuery.trim();
     if (!q || results.length === 0) return;
     if (lastMoreQuery === q || moreLoading) return;
     if (!canUseAiLookup()) { setShowPaywall(true); return; }
@@ -140,7 +140,7 @@ export default function SearchScreen() {
     } finally {
       setMoreLoading(false);
     }
-  }, [query, results.length, lastMoreQuery, moreLoading, canUseAiLookup, consumeAiLookup, addCustomNoun]);
+  }, [submittedQuery, results.length, lastMoreQuery, moreLoading, canUseAiLookup, consumeAiLookup, addCustomNoun]);
 
   const handleQueryChange = useCallback((text: string) => {
     setQuery(text);
