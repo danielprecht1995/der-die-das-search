@@ -30,7 +30,7 @@ export async function lookupMoreNounsWithAI(
   prefix: string
 ): Promise<GermanNoun[]> {
   const data = await postJson<{ nouns: GermanNoun[] }>('/lookup-more', { prefix: prefix.trim() });
-  return Array.isArray(data.nouns) ? data.nouns : [];
+  return Array.isArray(data.nouns) ? data.nouns.slice(0, 3) : [];
 }
 
 export async function lookupNounWithAI(

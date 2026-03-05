@@ -15,7 +15,7 @@ const SYSTEM_PROMPT = `You are a German grammar expert. When given a German noun
 {"noun":"<noun with correct capitalisation>","article":"<der|die|das>","plural":"<plural form>","english":"<short English translation>","example":"<one short example sentence in German using this noun with its article>","exampleEn":"<English translation of the example sentence>"}
 If the input is not a valid German noun, respond with: {"error":"not a noun"}`;
 
-const MORE_SYSTEM_PROMPT = `You are a German grammar expert. List up to 8 common German nouns that START WITH the given prefix (case-insensitive). Return ONLY a JSON array (no markdown, no explanation):
+const MORE_SYSTEM_PROMPT = `You are a German grammar expert. List up to 3 common German nouns that START WITH the given prefix (case-insensitive). Return ONLY a JSON array (no markdown, no explanation):
 [{"noun":"<capitalised noun>","article":"<der|die|das>","plural":"<plural>","english":"<short English translation>","example":"<one short example sentence in German using this noun with its article>","exampleEn":"<English translation of the example sentence>"}]
 If no nouns start with this prefix, return an empty array: []`;
 
@@ -108,7 +108,8 @@ function normalizeNounList(payload) {
       english: item.english,
       example: item.example,
       exampleEn: item.exampleEn,
-    }));
+    }))
+    .slice(0, 3);
 }
 
 async function callOpenAI(messages) {
